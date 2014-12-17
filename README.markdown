@@ -14,8 +14,9 @@ Writing Objective-C? Check out our [Objective-C Style Guide](https://github.com/
 * [Comments](#comments)
 * [Classes and Structures](#classes-and-structures)
   * [Use of Self](#use-of-self)
+  * [Protocol Conformance](#protocol-conformance)
 * [Function Declarations](#function-declarations)
-* [Closures](#closures)
+* [Closure Expressions](#closure-expressions)
 * [Types](#types)
   * [Constants](#constants)
   * [Optionals](#optionals)
@@ -142,6 +143,16 @@ Avoid block comments inline with code, as the code should be as self-documenting
 
 ## Classes and Structures
 
+### Which one to use?
+
+Remember, structs have [value semantics](https://developer.apple.com/library/mac/documentation/Swift/Conceptual/Swift_Programming_Language/ClassesAndStructures.html#//apple_ref/doc/uid/TP40014097-CH13-XID_144). Use structs for things that do not have an identity. An array that contains [a, b, c] is really the same as another array that contains [a, b, c] and they are completely interchangeable. It doesn't matter whether you use the first array or the second, because they represent the exact same thing. That's why arrays are structs.
+
+Classes have [reference semantics](https://developer.apple.com/library/mac/documentation/Swift/Conceptual/Swift_Programming_Language/ClassesAndStructures.html#//apple_ref/doc/uid/TP40014097-CH13-XID_145). Use classes for things that do have an identity or a specific life cycle. You would model a person as a class because two person objects are two different things. Just because two people have the same name and birthdate, doesn't mean they are the same person. But the person's birthdate would be a struct because a date of 3 March 1950 is the same as any other date object for 3 March 1950. The date itself doesn't have an identity.
+
+Sometimes, things should be structs but need to conform to `AnyObject` or are historically modeled as classes already (`NSDate`, `NSSet`). Try to follow these guidelines as closely as possible.
+
+### Example definition
+
 Here's an example of a well-styled class definition:
 
 ```swift
@@ -193,7 +204,7 @@ The example above demonstrates the following style guidelines:
 
 For conciseness, avoid using `self` since Swift does not require it to access an object's properties or invoke its methods.
 
-Use `self` when required to differentiate between property names and arguments in initializers, and when referencing properties in closures to make capture semantics explicit:
+Use `self` when required to differentiate between property names and arguments in initializers, and when referencing properties in closure expressions (as required by the compiler):
 
 ```swift
 class BoardLocation {
@@ -209,6 +220,33 @@ class BoardLocation {
   }
 }
 ```
+
+### Protocol Conformance
+
+When adding protocol conformance to a class, prefer adding a separate class extension for the protocol methods. This keeps the related methods grouped together with the protocol and can simplify instructions to add a protocol to a class with its associated methods.
+
+**Preferred:**
+```swift
+class MyViewcontroller: UIViewController {
+  // class stuff here
+}
+
+extension MyViewcontroller: UITableViewDataSource {
+  // table view data source methods
+}
+
+extension MyViewcontroller: UIScrollViewDelegate {
+  // scroll view delegate methods
+}
+```
+
+**Not Preferred:**
+```swift
+class MyViewcontroller: UIViewController, UITableViewDataSource, UIScrollViewDelegate {
+  // all methods
+}
+```
+
 
 ## Function Declarations
 
@@ -230,7 +268,7 @@ func reticulateSplines(spline: [Double], adjustmentFactor: Double,
 ```
 
 
-## Closures
+## Closure Expressions
 
 Use trailing closure syntax wherever possible. In all cases, give the closure parameters descriptive names:
 
@@ -282,14 +320,37 @@ Use implicitly unwrapped types declared with `!` only for instance variables tha
 When accessing an optional value, use optional chaining if the value is only accessed once or if there are many optionals in the chain:
 
 ```swift
-myOptional?.anotherOne?.optionalView?.setNeedsDisplay()
+self.textContainer?.textLabel?.setNeedsDisplay()
 ```
 
 Use optional binding when it's more convenient to unwrap once and perform multiple operations:
 
 ```swift
-if let view = self.optionalView {
-  // do many things with view
+if let textContainer = self.textContainer {
+  // do many things with textContainer
+}
+```
+
+When naming optional variables and properties, avoid naming them like `optionalString` or `maybeView` since their optional-ness is already in the type declaration.
+
+For optional binding, shadow the original name when appropriate rather than using names like `unwrappedView` or `actualLabel`.
+
+**Preferred:**
+```swift
+var subview: UIView?
+
+// later on...
+if let subview = subview {
+  // do something with unwrapped subview
+}
+```
+
+**Not Preferred:**
+```swift
+var optionalSubview: UIView?
+
+if let unwrappedSubview = optionalSubview {
+  // do something with unwrappedSubview
 }
 ```
 
@@ -308,6 +369,8 @@ var centerPoint = CGPoint(x: 96, y: 42)
 let bounds = CGRectMake(40, 20, 120, 80)
 var centerPoint = CGPointMake(96, 42)
 ```
+
+Prefer the struct-scope constants `CGRect.infiniteRect`, `CGRect.nullRect`, etc. over global constants `CGRectInfinite`, `CGRectNull`, etc. For existing variables, you can use the shorter `.zeroRect`.
 
 ### Type Inference
 
@@ -360,8 +423,8 @@ for _ in 0..<3 {
   println("Hello three times")
 }
 
-for person in attendeeList {
-  // do something
+for (index, person) in enumerate(attendeeList) {
+  println("\(person) is at position #\(index)")
 }
 ```
 
@@ -373,7 +436,7 @@ for var i = 0; i < 3; i++ {
 
 for var i = 0; i < attendeeList.count; i++ {
   let person = attendeeList[i]
-  // do something
+  println("\(person) is at position #\(i)")
 }
 ```
 
